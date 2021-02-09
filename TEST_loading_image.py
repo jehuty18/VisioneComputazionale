@@ -34,6 +34,13 @@ def dirac_delta_selector(indicator, dirac_delta_index):
     else:
         return 0
 
+def compute_alpha_agreement(bitplane_array, j_index):
+    dirac_delta_sum = 0
+    for bitplane in bitplane_array:
+        dirac_delta_sum += dirac_delta_selector(bitplane,j_index)
+    
+    return dirac_delta_sum
+
 def extract_agreements_array(image_array,rows,columns):
     #-------- provare ad ottimizzare la funziona spostando questi calcoli nella la creazione dell'array b -------#
     agreement_a = 0
@@ -43,23 +50,28 @@ def extract_agreements_array(image_array,rows,columns):
     #-------- AGREEMENTS -------#
     for elem in image_array:
         #SOMMATORIA per k=1..K con K=4 sono i 4 K-neighborhood definiti tramite 4 coppie di bitplanes (3-4, 4-5, 5-6, 6-7)
-        plan_3 = elem[2]
+        #plan_3 = elem[2]
         plan_4 = elem[3]
         plan_5 = elem[4]
         plan_6 = elem[5]
         plan_7 = elem[6]
 
-        #QUI le 4 coppie di bitplanes
-        bitplane_1 = indicator(plan_3, plan_4)
-        bitplane_2 = indicator(plan_4, plan_5)
-        bitplane_3 = indicator(plan_5, plan_6)
-        bitplane_4 = indicator(plan_6, plan_7)
+        plan_i = elem[7]
 
-        #QUI i risultati parziali derivati dall'applicazione del dirac delta selector
-        sum_a = dirac_delta_selector(bitplane_1,1)
-        sum_b = dirac_delta_selector(bitplane_2,2)
-        sum_c = dirac_delta_selector(bitplane_3,3)
-        sum_d = dirac_delta_selector(bitplane_4,4)
+        #QUI le 4 coppie di bitplanes
+        bitplane_4 = indicator_function(plan_i, plan_4)
+        bitplane_3 = indicator_function(plan_i, plan_5)
+        bitplane_2 = indicator_function(plan_i, plan_6)
+        bitplane_1 = indicator_function(plan_i, plan_7)
+
+        bitplane_array_var = np.array([bitplane_1,bitplane_2,bitplane_3,bitplane_4])
+
+        #QUI i risultati parziali derivati dall'applicazione del dirac delta selector per ogni bitplane ("alpha con i alla j")
+        #sum_a = dirac_delta_selector(bitplane_1,1) + dirac_delta_selector(bitplane_2,1) + dirac_delta_selector(bitplane_3,1) + dirac_delta_selector(bitplane_4,1)
+        sum_a = compute_alpha_agreement(bitplane_array_var,1)
+        sum_b = compute_alpha_agreement(bitplane_array_var,2)
+        sum_c = compute_alpha_agreement(bitplane_array_var,3)
+        sum_d = compute_alpha_agreement(bitplane_array_var,4)
         
         #QUI le somme aggregate
         agreement_a += sum_a
@@ -75,7 +87,36 @@ def extract_agreements_array(image_array,rows,columns):
 
     return np.array([agreement_a, agreement_b, agreement_c, agreement_d])
 
-def indicator(r,s):
+def extract_local_agreement(image_array, num_local_bitplanes, j_index):    
+    agreement_alpha = 0
+    agreement_inner = 0
+    bitplane_array_var = []
+    
+    for elem in image_array:
+        sum_inner = 0
+        bitplane_array_var_temp = []
+        plane_i = elem[7]
+        #QUESTA operazione è a rischio indexOutOfBoundsException 
+        for i in range(num_local_bitplanes):
+            bitplane_array_var_temp.append( indicator_function(plane_i, elem[i+3]) )
+        
+        bitplane_array_var = np.array(bitplane_array_var_temp)
+        #bitplane_array_var = np.array([ indicator_function(elem[3], elem[4]) ]) 
+
+        sum_alpha = compute_alpha_agreement(bitplane_array_var,j_index)
+        agreement_alpha += sum_alpha
+
+        for j in range(j_index):
+            sum_inner_temp = compute_alpha_agreement(bitplane_array_var,j+1)
+            sum_inner += sum_inner_temp
+        
+        #sum_inner += compute_alpha_agreement(bitplane_array_var,1)
+        
+        agreement_inner += sum_inner
+
+    return agreement_alpha / agreement_inner
+
+def indicator_function(r,s):
     if r == "0" and s == "0":
         return 1
     if r == "0" and s == "1":
@@ -89,6 +130,7 @@ def indicator(r,s):
 def bitplane_extraction(byte_array, bitplane_index):
     return byte_array[bitplane_index]
 
+################################################
 def sneeth_and_sokai_sm1(a,b,c,d):
     num = 2*(a+d)
     denum = 2*(a+d)+b+c
@@ -138,14 +180,28 @@ def lance_and_williams_dissm(a,b,c):
 
     return num/denum
 
-"""
-def agreement(i,j):
-    agre = indicator(r,s)
-    if agre == j:
-        deltaDiracCustom = 1
-    else:
-        deltaDiracCustom = 0
-"""
+def pattern_difference(a,b,c,d):
+    num = b*c
+
+    denum_elem = a+b+c+d
+    denum = denum_elem ** 2
+
+    return num/denum
+
+def variance_dissimilarity_measure(image_array):
+    measure = 0
+    for n in range(4):
+        p1 = extract_local_agreement(image_array,1,n+1)
+        p2 = extract_local_agreement(image_array,2,n+1)
+        if p1 < p2:
+            measure += p1
+        else:
+            measure += p2
+    return measure
+
+################################################
+
+
 
 #----------------- IMAGE METHODS ---------------------#
 def read_image(image_path):
@@ -288,17 +344,9 @@ flat = testdir_img.flatten()
 #--------- FUNCTION TO CONVERT INT INTO BYTE ----------#
 b = extract_bitplane_from_img_array(flat)
 
+#Tutto quello che segue è corretto
 agreements_array = extract_agreements_array(b, r, c)
 print(agreements_array)
-
-"""print("AGREEMENT a: ")
-print(agreement_a)
-print("AGREEMENT b: ")
-print(agreement_b)
-print("AGREEMENT c: ")
-print(agreement_c)
-print("AGREEMENT d: ")
-print(agreement_d)"""
 
 sneeth_and_sokai = sneeth_and_sokai_sm1(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
 sneeth_and_sokai_2 = sneeth_and_sokai_sm2(agreements_array[0], agreements_array[1], agreements_array[2])
@@ -308,6 +356,7 @@ sneeth_and_sokai_5 = sneeth_and_sokai_sm5(agreements_array[0], agreements_array[
 kulczynski_similarity = kulczynski_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
 ochiai_similarity = ochiai_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
 lance_and_williams_dissimilarity = lance_and_williams_dissm(agreements_array[0], agreements_array[1], agreements_array[2])
+pattern_diff = pattern_difference(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
 print("sneeth_and_sokai")
 print(sneeth_and_sokai)
 print("sneeth_and_sokai 2")
@@ -324,6 +373,14 @@ print("ochiai_similarity")
 print(ochiai_similarity)
 print("lance_and_williams_dissimilarity")
 print(lance_and_williams_dissimilarity)
+print("pattern_diff")
+print(pattern_diff)
+
+variance_diss = variance_dissimilarity_measure(b)
+print("variance_diss")
+print(variance_diss)
+
+
 #--------- --------------------------------- ----------#
 
 #_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-#
@@ -331,7 +388,7 @@ print()
 print()
 #_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-#
 
-testdir_img_t = np.array(read_image(testdir_t2))
+testdir_img_t = np.array(read_image(testdir_t))
 r_t = len(testdir_img_t)
 c_t = len(testdir_img_t[0])
 flat_t = testdir_img_t.flatten()
@@ -349,6 +406,7 @@ sneeth_and_sokai5_t = sneeth_and_sokai_sm5(agreements_array_t[0], agreements_arr
 kulczynski_similarity_t = kulczynski_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
 ochiai_similarity_t = ochiai_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
 lance_and_williams_dissimilarity_t = lance_and_williams_dissm(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
+pattern_diff_t = pattern_difference(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
 print("sneeth_and_sokai_t")
 print(sneeth_and_sokai_t)
 print("sneeth_and_sokai2_t")
@@ -365,6 +423,21 @@ print("ochiai_similarity_t")
 print(ochiai_similarity_t)
 print("lance_and_williams_dissimilarity_t")
 print(lance_and_williams_dissimilarity_t)
+print("pattern_diff_t")
+print(pattern_diff_t)
+
+"""p1_t = extract_local_agreement(b_t,1,4)
+print("p1_t")
+print(p1_t)
+p2_t = extract_local_agreement(b_t,2,4)
+print("p2_t")
+print(p2_t)"""
+
+variance_diss_t = variance_dissimilarity_measure(b_t)
+print("variance_diss_t")
+print(variance_diss_t)
+
+
 
 """
 image = img_as_float(read_image(testdir))
