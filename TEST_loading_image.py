@@ -116,6 +116,13 @@ def extract_local_agreement(image_array, num_local_bitplanes, j_index):
 
     return agreement_alpha / agreement_inner
 
+#I can't get how to compute ojala from pdf
+def extract_ojala_agreements(image_array):
+    #-------- AGREEMENTS -------#
+    for elem in image_array:
+        ojala_weight = compute_ojala_dir_weight(elem)
+        
+
 def indicator_function(r,s):
     if r == "0" and s == "0":
         return 1
@@ -194,10 +201,44 @@ def variance_dissimilarity_measure(image_array):
         p1 = extract_local_agreement(image_array,1,n+1)
         p2 = extract_local_agreement(image_array,2,n+1)
         if p1 < p2:
-            measure += p1
+            temp = p1
         else:
-            measure += p2
+            temp = p2
+        measure += temp
+
     return measure
+
+def binary_min_histogram_difference(image_array):
+    measure = 0
+    for n in range(4):
+        p1 = extract_local_agreement(image_array,1,n+1)
+        p2 = extract_local_agreement(image_array,2,n+1)
+        temp = abs(p1-p2)
+        measure += temp
+
+    return measure
+
+def binary_absolute_histogram_difference(image_array):
+    measure = 0
+    for n in range(4):
+        p1 = extract_local_agreement(image_array,1,n+1)
+        p2 = extract_local_agreement(image_array,2,n+1)
+        lg_p2 = np.log(p2)
+        temp = p1*lg_p2
+        measure += temp
+
+    return measure*(-1)
+
+def binary_mutual_entropy(image_array):
+    measure = 0
+    for n in range(4):
+        p1 = extract_local_agreement(image_array,1,n+1)
+        p2 = extract_local_agreement(image_array,2,n+1)
+        lg_p1p2 = np.log(p1/p2)
+        temp = p1*lg_p1p2
+        measure += temp
+
+    return measure*(-1)
 
 ################################################
 
@@ -335,51 +376,54 @@ feature_img = []
 feature_img_matrix_test = []
 #BASE IMG
 
-#--------- TEST FUNCTIONS WITH PLANES ----------#
-testdir_img = np.array(read_image(testdir))
-r = len(testdir_img)
-c = len(testdir_img[0])
-flat = testdir_img.flatten()
+#Try to open a file: if it exists, read -> else, open with append
+try:
+    with open("./FeatureFile.txt") as f:
+        print("File exists!")
+        file_content = f.readlines()
+        for i in range(len(file_content)):
+            file_content[i] = float(file_content[i].rstrip("\n"))
+        print(file_content)
+except IOError:
+    print("File does not exist. Creatining new one and proceeding with computing operations..")
 
-#--------- FUNCTION TO CONVERT INT INTO BYTE ----------#
-b = extract_bitplane_from_img_array(flat)
+    #--------- TEST FUNCTIONS WITH PLANES ----------#
+    testdir_img = np.array(read_image(testdir))
+    r = len(testdir_img)
+    c = len(testdir_img[0])
+    flat = testdir_img.flatten()
 
-#Tutto quello che segue è corretto
-agreements_array = extract_agreements_array(b, r, c)
-print(agreements_array)
+    #--------- FUNCTION TO CONVERT INT INTO BYTE ----------#
+    b = extract_bitplane_from_img_array(flat)
 
-sneeth_and_sokai = sneeth_and_sokai_sm1(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
-sneeth_and_sokai_2 = sneeth_and_sokai_sm2(agreements_array[0], agreements_array[1], agreements_array[2])
-sneeth_and_sokai_3 = sneeth_and_sokai_sm3(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
-sneeth_and_sokai_4 = sneeth_and_sokai_sm4(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
-sneeth_and_sokai_5 = sneeth_and_sokai_sm5(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
-kulczynski_similarity = kulczynski_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
-ochiai_similarity = ochiai_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
-lance_and_williams_dissimilarity = lance_and_williams_dissm(agreements_array[0], agreements_array[1], agreements_array[2])
-pattern_diff = pattern_difference(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
-print("sneeth_and_sokai")
-print(sneeth_and_sokai)
-print("sneeth_and_sokai 2")
-print(sneeth_and_sokai_2)
-print("sneeth_and_sokai 3")
-print(sneeth_and_sokai_3)
-print("sneeth_and_sokai 4")
-print(sneeth_and_sokai_4)
-print("sneeth_and_sokai 5")
-print(sneeth_and_sokai_5)
-print("kulczynski_similarity")
-print(kulczynski_similarity)
-print("ochiai_similarity")
-print(ochiai_similarity)
-print("lance_and_williams_dissimilarity")
-print(lance_and_williams_dissimilarity)
-print("pattern_diff")
-print(pattern_diff)
+    #Tutto quello che segue è corretto
+    agreements_array = extract_agreements_array(b, r, c)
+    print(agreements_array)
 
-variance_diss = variance_dissimilarity_measure(b)
-print("variance_diss")
-print(variance_diss)
+    sneeth_and_sokai = sneeth_and_sokai_sm1(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
+    sneeth_and_sokai_2 = sneeth_and_sokai_sm2(agreements_array[0], agreements_array[1], agreements_array[2])
+    sneeth_and_sokai_3 = sneeth_and_sokai_sm3(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
+    sneeth_and_sokai_4 = sneeth_and_sokai_sm4(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
+    sneeth_and_sokai_5 = sneeth_and_sokai_sm5(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
+    kulczynski_similarity = kulczynski_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
+    ochiai_similarity = ochiai_sm1(agreements_array[0], agreements_array[1], agreements_array[2])
+    lance_and_williams_dissimilarity = lance_and_williams_dissm(agreements_array[0], agreements_array[1], agreements_array[2])
+    pattern_diff = pattern_difference(agreements_array[0], agreements_array[1], agreements_array[2], agreements_array[3])
+    variance_diss = variance_dissimilarity_measure(b)
 
+    print("inizio local")
+    binary_min_histogram_diff = binary_min_histogram_difference(b)
+    binary_absolute_histogram_diff = binary_absolute_histogram_difference(b)
+    binary_mutual_entr = binary_mutual_entropy(b)
+
+    bsm_feature_array = np.array([sneeth_and_sokai, sneeth_and_sokai_2, sneeth_and_sokai_3, sneeth_and_sokai_4, sneeth_and_sokai_5, kulczynski_similarity, ochiai_similarity, lance_and_williams_dissimilarity, pattern_diff, variance_diss, binary_min_histogram_diff, binary_absolute_histogram_diff, binary_mutual_entr])
+    print(bsm_feature_array)
+    print("creazione file")
+
+    #feature_array = np.array([binary_min_histogram_diff, binary_absolute_histogram_diff, binary_mutual_entr])
+    with open("FeatureFile.txt", "a+") as feature_file:
+        np.savetxt(feature_file,bsm_feature_array)
+    #feature_file.close()
 
 #--------- --------------------------------- ----------#
 
@@ -388,56 +432,48 @@ print()
 print()
 #_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-#
 
-testdir_img_t = np.array(read_image(testdir_t))
-r_t = len(testdir_img_t)
-c_t = len(testdir_img_t[0])
-flat_t = testdir_img_t.flatten()
+try:
+    with open("./FeatureFile_T.txt") as f:
+        print("File T exists!")
+        file_content = f.readlines()
+        for i in range(len(file_content)):
+            file_content[i] = float(file_content[i].rstrip("\n"))
+        print(file_content)
+except IOError:
+    print("File T does not exist. Creatining new one and proceeding with computing operations..")
 
-b_t = extract_bitplane_from_img_array(flat_t)
+    testdir_img_t = np.array(read_image(testdir_t))
+    r_t = len(testdir_img_t)
+    c_t = len(testdir_img_t[0])
+    flat_t = testdir_img_t.flatten()
 
-agreements_array_t = extract_agreements_array(b_t, r_t, c_t)
-print(agreements_array_t)
+    b_t = extract_bitplane_from_img_array(flat_t)
 
-sneeth_and_sokai_t = sneeth_and_sokai_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
-sneeth_and_sokai2_t = sneeth_and_sokai_sm2(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
-sneeth_and_sokai3_t = sneeth_and_sokai_sm3(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
-sneeth_and_sokai4_t = sneeth_and_sokai_sm4(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
-sneeth_and_sokai5_t = sneeth_and_sokai_sm5(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
-kulczynski_similarity_t = kulczynski_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
-ochiai_similarity_t = ochiai_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
-lance_and_williams_dissimilarity_t = lance_and_williams_dissm(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
-pattern_diff_t = pattern_difference(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
-print("sneeth_and_sokai_t")
-print(sneeth_and_sokai_t)
-print("sneeth_and_sokai2_t")
-print(sneeth_and_sokai2_t)
-print("sneeth_and_sokai3_t")
-print(sneeth_and_sokai3_t)
-print("sneeth_and_sokai4_t")
-print(sneeth_and_sokai4_t)
-print("sneeth_and_sokai5_t")
-print(sneeth_and_sokai5_t)
-print("kulczynski_similarity_t")
-print(kulczynski_similarity_t)
-print("ochiai_similarity_t")
-print(ochiai_similarity_t)
-print("lance_and_williams_dissimilarity_t")
-print(lance_and_williams_dissimilarity_t)
-print("pattern_diff_t")
-print(pattern_diff_t)
+    agreements_array_t = extract_agreements_array(b_t, r_t, c_t)
+    print(agreements_array_t)
 
-"""p1_t = extract_local_agreement(b_t,1,4)
-print("p1_t")
-print(p1_t)
-p2_t = extract_local_agreement(b_t,2,4)
-print("p2_t")
-print(p2_t)"""
+    sneeth_and_sokai_t = sneeth_and_sokai_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
+    sneeth_and_sokai2_t = sneeth_and_sokai_sm2(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
+    sneeth_and_sokai3_t = sneeth_and_sokai_sm3(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
+    sneeth_and_sokai4_t = sneeth_and_sokai_sm4(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
+    sneeth_and_sokai5_t = sneeth_and_sokai_sm5(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
+    kulczynski_similarity_t = kulczynski_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
+    ochiai_similarity_t = ochiai_sm1(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
+    lance_and_williams_dissimilarity_t = lance_and_williams_dissm(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2])
+    pattern_diff_t = pattern_difference(agreements_array_t[0], agreements_array_t[1], agreements_array_t[2], agreements_array_t[3])
+    variance_diss_t = variance_dissimilarity_measure(b_t)
 
-variance_diss_t = variance_dissimilarity_measure(b_t)
-print("variance_diss_t")
-print(variance_diss_t)
+    print("inizio local T")
+    binary_min_histogram_diff_t = binary_min_histogram_difference(b_t)
+    binary_absolute_histogram_diff_t = binary_absolute_histogram_difference(b_t)
+    binary_mutual_entr_t = binary_mutual_entropy(b_t)
 
+    bsm_feature_array_t = np.array([sneeth_and_sokai_t, sneeth_and_sokai2_t, sneeth_and_sokai3_t, sneeth_and_sokai4_t, sneeth_and_sokai5_t, kulczynski_similarity_t, ochiai_similarity_t, lance_and_williams_dissimilarity_t, pattern_diff_t, variance_diss_t, binary_min_histogram_diff_t, binary_absolute_histogram_diff_t, binary_mutual_entr_t])
+    print(bsm_feature_array_t)
+    print("creazione file")
 
+    with open("FeatureFile_T.txt", "a+") as feature_file_t:
+        np.savetxt(feature_file_t,bsm_feature_array_t)
 
 """
 image = img_as_float(read_image(testdir))
