@@ -10,7 +10,7 @@ def extract_bitplane_from_img_array(image_array):
     
     return b
 
-#-------- LA FUNZIONE DIRAC DELTA GENERA UN IMPULSO PER VALORI UGUALI AD UNA Xo, DA TUTTE LE ALTRE PARTI E' UGUALE A ZERO
+#-------- DIRACT DELTA FUNCTION GENERATES AN IMPULSE FOR VALUES UQUALS TO x0, EVERYWHERE ELSE IS ZERO
 def dirac_delta_selector(indicator, dirac_delta_index):
     if indicator == dirac_delta_index:
         return 1
@@ -25,15 +25,12 @@ def compute_alpha_agreement(bitplane_array, j_index):
     return dirac_delta_sum
 
 def extract_agreements_array(image_array,rows,columns):
-    #-------- provare ad ottimizzare la funziona spostando questi calcoli nella la creazione dell'array b -------#
     agreement_a = 0
     agreement_b = 0
     agreement_c = 0
     agreement_d = 0
     #-------- AGREEMENTS -------#
     for elem in image_array:
-        #SOMMATORIA per k=1..K con K=4 sono i 4 K-neighborhood definiti tramite 4 coppie di bitplanes (3-4, 4-5, 5-6, 6-7)
-        #plan_3 = elem[2]
         plan_4 = elem[3]
         plan_5 = elem[4]
         plan_6 = elem[5]
@@ -41,7 +38,7 @@ def extract_agreements_array(image_array,rows,columns):
 
         plan_i = elem[7]
 
-        #QUI le 4 coppie di bitplanes
+        #BITPLANES COUPLES
         bitplane_4 = indicator_function(plan_i, plan_4)
         bitplane_3 = indicator_function(plan_i, plan_5)
         bitplane_2 = indicator_function(plan_i, plan_6)
@@ -49,20 +46,19 @@ def extract_agreements_array(image_array,rows,columns):
 
         bitplane_array_var = np.array([bitplane_1,bitplane_2,bitplane_3,bitplane_4])
 
-        #QUI i risultati parziali derivati dall'applicazione del dirac delta selector per ogni bitplane ("alpha con i alla j")
-        #sum_a = dirac_delta_selector(bitplane_1,1) + dirac_delta_selector(bitplane_2,1) + dirac_delta_selector(bitplane_3,1) + dirac_delta_selector(bitplane_4,1)
+        #PARTIAL RESULTS FOR DELTA DIRACT SELECTOR APPLY
         sum_a = compute_alpha_agreement(bitplane_array_var,1)
         sum_b = compute_alpha_agreement(bitplane_array_var,2)
         sum_c = compute_alpha_agreement(bitplane_array_var,3)
         sum_d = compute_alpha_agreement(bitplane_array_var,4)
         
-        #QUI le somme aggregate
+        #AGGREGATE SUMS
         agreement_a += sum_a
         agreement_b += sum_b
         agreement_c += sum_c
         agreement_d += sum_d
 
-    #QUI le variabili di agreement per il calcolo delle BSM
+    #AGREEMENTS VARIABLES FOR BSM OPERATIONS
     agreement_a /= (rows*columns)
     agreement_b /= (rows*columns)
     agreement_c /= (rows*columns)
@@ -79,12 +75,11 @@ def extract_local_agreement(image_array, num_local_bitplanes, j_index):
         sum_inner = 0
         bitplane_array_var_temp = []
         plane_i = elem[7]
-        #QUESTA operazione è a rischio indexOutOfBoundsException 
+        
         for i in range(num_local_bitplanes):
             bitplane_array_var_temp.append( indicator_function(plane_i, elem[i+3]) )
         
         bitplane_array_var = np.array(bitplane_array_var_temp)
-        #bitplane_array_var = np.array([ indicator_function(elem[3], elem[4]) ]) 
 
         sum_alpha = compute_alpha_agreement(bitplane_array_var,j_index)
         agreement_alpha += sum_alpha
@@ -92,8 +87,6 @@ def extract_local_agreement(image_array, num_local_bitplanes, j_index):
         for j in range(j_index):
             sum_inner_temp = compute_alpha_agreement(bitplane_array_var,j+1)
             sum_inner += sum_inner_temp
-        
-        #sum_inner += compute_alpha_agreement(bitplane_array_var,1)
         
         agreement_inner += sum_inner
 
