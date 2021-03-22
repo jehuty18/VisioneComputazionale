@@ -17,7 +17,7 @@ def _parsing_args():
     except getopt.error as err:
         print (str(err))
         sys.exit(2)
-    
+
     for current_argument, current_value in arguments:
         if current_argument in ("-r", "--trainPath"):
             print (("Executing scripts using '%s' as trainingSet path") % (current_value))
@@ -25,6 +25,8 @@ def _parsing_args():
             train_dir_base_path = current_value
         elif current_argument in ("-h", "--help"):
             print ("Displaying help..\n\n\t-t --testPath(Required):\tpath for test images\n\t-r --trainPath(Required):\tpath for train images\n\t-u --unsupTestPath(Optional):\tpath for test images, unsupervised scenario\n")
+            print("Exiting script..")
+            exit(1)
         elif current_argument in ("-t", "--testPath"):
             print (("Executing scripts using '%s' as testSet path") % (current_value))
             global test_dir_base_path
@@ -35,12 +37,12 @@ def _parsing_args():
             test_unsupervised_dir_base_path = current_value
 
 def main():
-
-    _parsing_args()
     
     global test_dir_base_path
     global train_dir_base_path
     global test_unsupervised_dir_base_path
+
+    _parsing_args()
 
     #Assert-like block to check for variable definition (global directive does not define/initialize variables)
     try:
@@ -51,7 +53,7 @@ def main():
         exit(1)
 
     #Feature extraction for all images under 'train_dir_base_path' directory
-    dataset = imgt.feature_extraction_from_dir(train_dir_base_path)
+    dataset = imgt.feature_extraction_from_dir(train_dir_base_path, eut.TrainingApproaches.SUPERVISED)
     print("[TEST] after feature matrix created")
     #setting parameters for network definition
     n_inputs = len(dataset[0]) - 1
@@ -61,30 +63,19 @@ def main():
     epochs = 200
     seed(1)
     print("n_inputs: %f\tn_hidden: %f\tn_outputs: %f" % (n_inputs, n_hidden, n_outputs))
+
     #Network initialization + network training (first training set)
     network = net.initialize_network(n_inputs, n_hidden, n_outputs)
     net.train_network(network, dataset, l_rate, epochs, n_outputs, eut.TraningFunctions.SIGMOID)
     print("net trained")
     #feature extraction for test set + network usage for prediction
-    testset = imgt.feature_extraction_from_dir(test_dir_base_path)
-    print("\n[TEST] after test feature matrix created")
-    for row in testset:
-        prediction = net.predict(network, row, eut.TraningFunctions.SIGMOID)
-        if row[-1] is None:
-            print('Blind evaluation, Got=%d' % (prediction))
-        else:	
-            print('Expected=%d, Got=%d' % (row[-1], prediction))
+    testset = imgt.feature_extraction_from_dir(test_dir_base_path, eut.TrainingApproaches.SUPERVISED)
+    net.evaluate_net(testset, network)
 
     try:
         #feature extraction for test set + network usage for prediction in unsupervised scenario
-        testset_uns = imgt.feature_extraction_from_dir_unsupervised(test_unsupervised_dir_base_path)    
-        print("[TEST] after testset_uns feature matrix created")
-        for row in testset_uns:
-            prediction = net.predict(network, row, eut.TraningFunctions.SIGMOID)
-            if row[-1] is None:
-                print('Blind evaluation, Got=%d' % (prediction))
-            else:	
-                print('Expected=%d, Got=%d' % (row[-1], prediction))
+        testset_uns = imgt.feature_extraction_from_dir(test_unsupervised_dir_base_path, eut.TrainingApproaches.UNSUPERVISED)    
+        net.evaluate_net(testset_uns, network)
     except:
         print("\nNo unsupervised test required")
 

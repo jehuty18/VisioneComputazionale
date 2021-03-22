@@ -100,3 +100,11 @@ def train_network(network, train, l_rate, n_epoch, n_outputs, training_function)
 def predict(network, row, training_function):
 	outputs = forward_propagate(network, row, training_function)
 	return outputs.index(max(outputs))
+
+def evaluate_net(dataset, network):
+	for row in dataset:
+		prediction = predict(network, row, eut.TraningFunctions.SIGMOID)
+		if row[-1] is None:
+			print('Blind evaluation, Got=%d' % (prediction))
+		else:	
+			print('Expected=%d, Got=%d' % (row[-1], prediction))
